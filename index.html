@@ -74,7 +74,7 @@
 </main>
 <script>
   // HIER ÄNDERN:
-  const wiedersehen = "2026-10-14T21:24:30"; // Datum, Uhrzeit und Zeitzone
+  const wiedersehen = "2026-10-14T21:29:30"; // Datum, Uhrzeit und Zeitzone
   // Beispiel Sommerzeit in Deutschland: +02:00, Winterzeit: +01:00
 
   document.getElementById("headline").textContent = "Zeit bis sich die Pookies wiedersehen:";
@@ -165,6 +165,7 @@
     if (rest === 0) {
       document.getElementById("headline").textContent = "Die Pookies sind wieder vereint";
       feuerwerkStarten();
+    }
   }
   aktualisieren();
   setInterval(aktualisieren, 1000);
