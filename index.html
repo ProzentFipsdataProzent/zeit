@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pookie-Timer</title>
+  <title>Der Pookie-Countdown</title>
   <style>
     * { box-sizing: border-box; }
     html { min-height: 100%; background: #141b2b; }
@@ -40,6 +40,17 @@
     .number { display: block; font-size: clamp(1.45rem, 7.5vw, 3.5rem); line-height: 1.1; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
     .label { display: block; margin-top: 8px; color: #cbd5e1; font-size: clamp(.62rem, 2.7vw, .95rem); line-height: 1.2; overflow-wrap: anywhere; }
     #message { margin: 26px 0 0; color: #cbd5e1; font-size: clamp(.9rem, 3.5vw, 1rem); }
+    #fireworks {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+    body.celebrating #fireworks { display: block; }
+    body.celebrating main { position: relative; z-index: 1; }
     @media (max-width: 360px) {
       body { padding-left: 10px; padding-right: 10px; }
       .countdown { gap: 5px; }
@@ -50,6 +61,7 @@
   </style>
 </head>
 <body>
+<canvas id="fireworks" aria-hidden="true"></canvas>
 <main>
   <h1 id="headline"></h1>
   <div class="countdown" aria-live="off">
@@ -62,11 +74,82 @@
 </main>
 <script>
   // HIER ÄNDERN:
-  const wiedersehen = "2026-10-29T22:00:00+01:00"; // Datum, Uhrzeit und Zeitzone
+  const wiedersehen = "2026-10-14T21:09:00+01:00"; // Datum, Uhrzeit und Zeitzone
   // Beispiel Sommerzeit in Deutschland: +02:00, Winterzeit: +01:00
 
   document.getElementById("headline").textContent = "Zeit bis sich die Pookies wiedersehen:";
   const ziel = new Date(wiedersehen).getTime();
+  let feuerwerkGestartet = false;
+  let feuerwerkBis = 0;
+  let animationId = null;
+  const canvas = document.getElementById("fireworks");
+  const ctx = canvas.getContext("2d");
+  const partikel = [];
+  let letzteExplosion = 0;
+
+  function canvasAnpassen() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", canvasAnpassen);
+  canvasAnpassen();
+
+  function explodieren() {
+    const x = Math.random() * window.innerWidth * 0.84 + window.innerWidth * 0.08;
+    const y = Math.random() * window.innerHeight * 0.55 + window.innerHeight * 0.08;
+    const farbe = ["#ff5c8a", "#ffd166", "#72ddf7", "#b8f2a1", "#c8a2ff", "#ffffff"][Math.floor(Math.random() * 6)];
+    const anzahl = 55 + Math.floor(Math.random() * 35);
+    for (let i = 0; i < anzahl; i++) {
+      const winkel = Math.random() * Math.PI * 2;
+      const tempo = Math.random() * 4.5 + 1.2;
+      partikel.push({ x, y, vx: Math.cos(winkel) * tempo, vy: Math.sin(winkel) * tempo,
+        life: 55 + Math.random() * 35, maxLife: 90, farbe, radius: Math.random() * 2.4 + 1 });
+    }
+  }
+  function feuerwerkZeichnen(zeit) {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    if (zeit - letzteExplosion > 430) {
+      explodieren();
+      if (Math.random() > 0.35) explodieren();
+      letzteExplosion = zeit;
+    }
+    for (let i = partikel.length - 1; i >= 0; i--) {
+      const p = partikel[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.035;
+      p.vx *= 0.99;
+      p.vy *= 0.99;
+      p.life -= 1;
+      if (p.life <= 0) { partikel.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, p.life / 25);
+      ctx.fillStyle = p.farbe;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (zeit < feuerwerkBis || partikel.length > 0) {
+      animationId = requestAnimationFrame(feuerwerkZeichnen);
+    } else {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      document.body.classList.remove("celebrating");
+      animationId = null;
+    }
+  }
+  function feuerwerkStarten() {
+    if (feuerwerkGestartet) return;
+    feuerwerkGestartet = true;
+    feuerwerkBis = performance.now() + 12000;
+    letzteExplosion = 0;
+    document.body.classList.add("celebrating");
+    explodieren();
+    explodieren();
+    animationId = requestAnimationFrame(feuerwerkZeichnen);
+  }
+
   function aktualisieren() {
     if (!Number.isFinite(ziel)) {
       document.getElementById("message").textContent = "Bitte ein gültiges Datum eintragen.";
@@ -78,7 +161,8 @@
     ["days", "hours", "minutes", "seconds"].forEach((id, i) => {
       document.getElementById(id).textContent = i === 0 ? werte[i] : String(werte[i]).padStart(2, "0");
     });
-    document.getElementById("message").textContent = rest === 0 ? "Endlich wieder zusammen!" : "";
+    document.getElementById("message").textContent = rest === 0 ? "Die Pookies sind vereint!" : "";
+    if (rest === 0) feuerwerkStarten();
   }
   aktualisieren();
   setInterval(aktualisieren, 1000);
